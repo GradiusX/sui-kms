@@ -1,5 +1,5 @@
 import { Secp256k1PublicKey } from '@mysten/sui.js';
-import { KMSClient, GetPublicKeyCommand, SignCommand } from "@aws-sdk/client-kms";
+import { KMSClient, GetPublicKeyCommand, SignCommand, MessageType, AlgorithmSpec, SigningAlgorithmSpec } from "@aws-sdk/client-kms";
 import { sha256 } from '@noble/hashes/sha256';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import EthCrypto from 'eth-crypto';
@@ -22,11 +22,11 @@ const kmsClient = new KMSClient({
 });
 
 // Sign a msg with KMS (MessageType: RAW | DIGEST)
-async function signWithKMS(msg: Uint8Array, mgs_type: string) {
+async function signWithKMS(msg: Uint8Array, mgs_type: MessageType) {
     const input = {
         KeyId: kmsKeyId, 
         Message: msg,
-        SigningAlgorithm: 'ECDSA_SHA_256',
+        SigningAlgorithm: SigningAlgorithmSpec.ECDSA_SHA_256,
         MessageType: mgs_type
     };
     const command = new SignCommand(input);
@@ -106,7 +106,7 @@ function verifySECP(
     const msgHash = sha256(msg);
     const sig_DER = await signWithKMS(msgHash, 'DIGEST')
     const sig_r_s = secp256k1.Signature.fromDER(Buffer.from(sig_DER).toString('hex'))
-    const sig = sig_r_s.toCompactHex()
+    const sig = sig_r_s.normalizeS().toCompactHex()
 
     // Get uncompressed Public Key from KMS
     const kms_pk = await getKMSPublicKey()
